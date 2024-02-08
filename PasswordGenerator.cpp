@@ -89,25 +89,17 @@ std::string generatePassword( const Configuration* configuration )
     std::string password;
     srand( static_cast<unsigned int>( time( 0 ) ) );
 
-    if ( configuration->allowDuplicate )
+    for ( int i = 0; i < configuration->length; i++ )
     {
-        for ( int i = 0; i < configuration->length; i++ )
-        {
-            password += charset[ rand() % ( charset.length() - 1 ) ];
-        }
-    }
-    else
-    {
-        // A bit more logic if we are to avoid duplicated characters
-        for ( int i = 0; i < configuration->length; i++ )
-        {
-            char c = charset[ rand() % ( charset.length() - 1 ) ];
+        char c = charset[ rand() % ( charset.length() - 1 ) ];
 
-            // Character is no longer available
+        if ( !configuration->allowDuplicate )
+        {
+            // Each character can only be used once in the password - erase them from the charset as they get used
             charset.erase( std::find( charset.begin(), charset.end(), c ) );
-
-            password += c;
         }
+
+        password += c;
     }
 
     return password;
@@ -124,8 +116,8 @@ int main( int argc, char** argv )
     configuration.count = 1;
     configuration.saveOnExit = false;
 
-    configuration.allowUppercase = false;
-    configuration.allowLowercase = false;
+    configuration.allowUppercase = true;
+    configuration.allowLowercase = true;
     configuration.allowDigit = true;
     configuration.allowSpecial = false;
     configuration.allowSimilar = false;
@@ -167,19 +159,21 @@ int main( int argc, char** argv )
     }
 
     // TODO if configured, attempt to save configuration
-
+    
+    // Command line configuration with a default setup
+    // 
     // Arguments with value:                Default:            Option:
     // - password length                    - default 16        -length=[0-9]+
     // - number of passwords to generate    - default 1         -count=[0-9]+
     // 
     // Flags (on/off):                      Default:            Option:
-    // - special characters                 on                  +/-allow-special-characters
-    // - similar characters                 on                  +/-allow-similar-characters
-    // - duplicated characters              on                  +/-allow-duplicated-characters
     // - uppercase characters               on                  +/-allow-uppercase
     // - lowercase characters               on                  +/-allow-lowercase
     // - numeric characters                 on                  +/-allow-numbers
-    // - start with a letter                on                  +/-start-with-letter
-    // - avoid sequences (123, abc)         on                  +/-avoid-sequences
-    // - save this configuration            off                 +/-save
+    // - special characters                 on                  +/-allow-special-characters
+    // - similar characters                 on                  +/-allow-similar-characters
+    // - duplicated characters              on                  +/-allow-duplicated-characters
+    // ? start with a letter                on                  +/-start-with-letter
+    // ? avoid sequences (123, abc)         on                  +/-avoid-sequences
+    // ? save this configuration            off                 +/-save
 }
