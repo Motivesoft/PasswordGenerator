@@ -15,6 +15,7 @@ typedef struct
     bool allowDigit;
     bool allowSimilar;
     bool allowSpecial;
+    bool allowDuplicate;
     bool saveOnExit;
 } Configuration;
 
@@ -69,17 +70,46 @@ std::string generatePassword( const Configuration* configuration )
         }
     }
 
+    // Impossible
     if ( charset.length() == 0 )
     {
+        std::cerr << "No character sets selected" << std::endl;
+
+        return "";
+    }
+
+    // Impossible
+    if ( !configuration->allowDuplicate && charset.length() < configuration->length )
+    {
+        std::cerr << "Insufficient characters available for requested configuration" << std::endl;
+
         return "";
     }
 
     std::string password;
     srand( static_cast<unsigned int>( time( 0 ) ) );
-    for ( int i = 0; i < configuration->length; i++ )
+
+    if ( configuration->allowDuplicate )
     {
-        password += charset[ rand() % ( charset.length() - 1 )];
+        for ( int i = 0; i < configuration->length; i++ )
+        {
+            password += charset[ rand() % ( charset.length() - 1 ) ];
+        }
     }
+    else
+    {
+        // A bit more logic if we are to avoid duplicated characters
+        for ( int i = 0; i < configuration->length; i++ )
+        {
+            char c = charset[ rand() % ( charset.length() - 1 ) ];
+
+            // Character is no longer available
+            charset.erase( std::find( charset.begin(), charset.end(), c ) );
+
+            password += c;
+        }
+    }
+
     return password;
 }
 
@@ -90,15 +120,16 @@ int main( int argc, char** argv )
     Configuration configuration;
 
     // Default values - TODO read from a dot file if present
-    configuration.length = 16;
+    configuration.length = 12;
     configuration.count = 1;
     configuration.saveOnExit = false;
 
     configuration.allowUppercase = false;
-    configuration.allowLowercase = true;
+    configuration.allowLowercase = false;
     configuration.allowDigit = true;
     configuration.allowSpecial = false;
     configuration.allowSimilar = false;
+    configuration.allowDuplicate = false;
 
     // Look for configuration overrides
     for ( int loop = 1; loop < argc; loop++ )
@@ -123,7 +154,16 @@ int main( int argc, char** argv )
     // TODO generate and print password(s)
     for ( short count = 0; count < configuration.count; count++ )
     {
-        std::cout << generatePassword( &configuration ) << std::endl;
+        std::string password = generatePassword( &configuration );
+
+        if ( password.length() > 0 )
+        {
+            std::cout << generatePassword( &configuration ) << std::endl;
+        }
+        else
+        {
+            break;
+        }
     }
 
     // TODO if configured, attempt to save configuration
