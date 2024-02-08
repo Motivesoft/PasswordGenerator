@@ -10,12 +10,47 @@ typedef struct
 {
     unsigned short length;
     unsigned short count;
+    bool allowLowercase;
+    bool allowUppercase;
+    bool allowDigits;
+    bool allowSimilar;
+    bool allowSpecial;
     bool saveOnExit;
 } Configuration;
 
 std::string generatePassword( const Configuration* configuration )
 {
-    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+{}|:<>?-=[];',./";
+    std::string charsetLower = "abcdefghijklmnopqrstuvwxyz";
+    std::string charsetUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    std::string charsetDigit = "0123456789";
+    std::string charsetSpecial = "!@#$%^&*()_+{}|:<>?-=[];',./";
+
+    std::string charset;
+
+    charset = charsetLower + charsetUpper + charsetDigit + charsetSpecial;
+
+    if ( !configuration->allowSimilar )
+    {
+        int charsetCount =
+            configuration->allowUppercase ? 1 : 0 +
+            configuration->allowLowercase ? 1 : 0 +
+            configuration->allowDigits ? 1 : 0;
+
+        if ( charsetCount > 1 )
+        {
+            std::string charsetSimilar = "iloILO01";
+
+            // Remove similar characters
+            for ( std::string::iterator it = charset.begin(); it != charset.end(); it++ )
+            {
+                if ( std::find( charsetSimilar.begin(), charsetSimilar.end(), *it ) != charsetSimilar.end() )
+                {
+                    it = charset.erase( it );
+                }
+            }
+        }
+    }
+
     std::string password;
     srand( static_cast<unsigned int>( time( 0 ) ) );
     for ( int i = 0; i < configuration->length; i++ )
@@ -35,6 +70,10 @@ int main( int argc, char** argv )
     configuration.length = 16;
     configuration.count = 1;
     configuration.saveOnExit = false;
+
+    configuration.allowUppercase = false;
+    configuration.allowLowercase = false;
+    configuration.allowDigits = true;
 
     // Look for configuration overrides
     for ( int loop = 1; loop < argc; loop++ )
