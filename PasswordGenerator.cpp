@@ -12,7 +12,7 @@ typedef struct
     unsigned short count;
     bool allowLowercase;
     bool allowUppercase;
-    bool allowDigits;
+    bool allowDigit;
     bool allowSimilar;
     bool allowSpecial;
     bool saveOnExit;
@@ -20,42 +20,65 @@ typedef struct
 
 std::string generatePassword( const Configuration* configuration )
 {
-    std::string charsetLower = "abcdefghijklmnopqrstuvwxyz";
     std::string charsetUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    std::string charsetLower = "abcdefghijklmnopqrstuvwxyz";
     std::string charsetDigit = "0123456789";
     std::string charsetSpecial = "!@#$%^&*()_+{}|:<>?-=[];',./";
+    std::string charsetSimilar = "iloILO01!|";
 
     std::string charset;
 
-    charset = charsetLower + charsetUpper + charsetDigit + charsetSpecial;
+    if ( configuration->allowUppercase )
+    {
+        charset += charsetUpper;
+    }
+    if ( configuration->allowLowercase )
+    {
+        charset += charsetLower;
+    }
+    if ( configuration->allowDigit )
+    {
+        charset += charsetDigit;
+    }
+    if ( configuration->allowSpecial )
+    {
+        charset += charsetSpecial;
+    }
 
     if ( !configuration->allowSimilar )
     {
+        // Filter similar characters unless we are only using one charset
         int charsetCount =
-            configuration->allowUppercase ? 1 : 0 +
-            configuration->allowLowercase ? 1 : 0 +
-            configuration->allowDigits ? 1 : 0;
+            ( configuration->allowUppercase ? 1 : 0 ) +
+            ( configuration->allowLowercase ? 1 : 0 ) +
+            ( configuration->allowDigit ? 1 : 0 ) +
+            ( configuration->allowSpecial ? 1 : 0 );
 
         if ( charsetCount > 1 )
         {
-            std::string charsetSimilar = "iloILO01";
-
             // Remove similar characters
-            for ( std::string::iterator it = charset.begin(); it != charset.end(); it++ )
+            for ( std::string::iterator it = charsetSimilar.begin(); it != charsetSimilar.end(); it++ )
             {
-                if ( std::find( charsetSimilar.begin(), charsetSimilar.end(), *it ) != charsetSimilar.end() )
+                std::string::iterator found = std::find( charset.begin(), charset.end(), *it );
+
+                if ( found != charset.end() )
                 {
-                    it = charset.erase( it );
+                    charset.erase( found );
                 }
             }
         }
+    }
+
+    if ( charset.length() == 0 )
+    {
+        return "";
     }
 
     std::string password;
     srand( static_cast<unsigned int>( time( 0 ) ) );
     for ( int i = 0; i < configuration->length; i++ )
     {
-        password += charset[ rand() % ( sizeof( charset ) - 1 ) ];
+        password += charset[ rand() % ( charset.length() - 1 )];
     }
     return password;
 }
@@ -72,8 +95,10 @@ int main( int argc, char** argv )
     configuration.saveOnExit = false;
 
     configuration.allowUppercase = false;
-    configuration.allowLowercase = false;
-    configuration.allowDigits = true;
+    configuration.allowLowercase = true;
+    configuration.allowDigit = true;
+    configuration.allowSpecial = false;
+    configuration.allowSimilar = false;
 
     // Look for configuration overrides
     for ( int loop = 1; loop < argc; loop++ )
