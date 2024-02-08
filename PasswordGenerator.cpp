@@ -1,9 +1,10 @@
 // PasswordGenerator.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
-#include <iostream>
 #include <ctime>
 #include <cstdlib>
+#include <fstream>
+#include <iostream>
 #include <string>
 
 typedef struct
@@ -104,6 +105,61 @@ std::string generatePassword( const Configuration* configuration )
     return password;
 }
 
+void processConfigurationItem( std::string configurationItem, Configuration* configuration )
+{
+    // Assume everything starts with a + or -
+    if ( configurationItem[ 0 ] == '+' || configurationItem[ 0 ] == '-' )
+    {
+        bool flag = configurationItem[ 0 ] == '+';
+
+        std::string argument = configurationItem.substr( 1 );
+
+        if ( argument == "allow-uppercase" )
+        {
+            configuration->allowUppercase = flag;
+        }
+        else if ( argument == "allow-lowercase" )
+        {
+            configuration->allowLowercase = flag;
+        }
+        else if ( argument == "allow-numbers" )
+        {
+            configuration->allowDigit = flag;
+        }
+        else if ( argument == "allow-special" )
+        {
+            configuration->allowSpecial = flag;
+        }
+        else if ( argument == "allow-similar" )
+        {
+            configuration->allowSimilar = flag;
+        }
+        else if ( argument == "allow-duplicate" )
+        {
+            configuration->allowDuplicate = flag;
+        }
+        else if ( argument.substr( 0, 6 ) == "save" )
+        {
+            configuration->saveOnExit = flag;
+        }
+        else if ( argument.substr( 0, 7 ) == "length:" )
+        {
+            configuration->length = atoi( argument.substr( 7 ).c_str() );
+        }
+        else if ( argument.substr( 0, 6 ) == "count:" )
+        {
+            configuration->count = atoi( argument.substr( 6 ).c_str() );
+        }
+    }
+    else
+    {
+        std::cerr << "Invalid option: " << configurationItem << std::endl;
+
+        // Don't save if there is a problem with the configuration
+        configuration->saveOnExit = false;
+    }
+}
+
 int main( int argc, char** argv )
 {
     std::cout << "Password Generator\n";
@@ -130,52 +186,7 @@ int main( int argc, char** argv )
     {
         std::string argument = argv[ loop ];
 
-        if ( argument[ 0 ] == '+' || argument[ 0 ] == '-' )
-        {
-            bool flag = argument[ 0 ] == '+';
-
-            argument = argument.substr( 1 );
-
-            if ( argument == "allow-uppercase" )
-            {
-                configuration.allowUppercase = flag;
-            }
-            else if ( argument == "allow-lowercase" )
-            {
-                configuration.allowLowercase = flag;
-            }
-            else if ( argument == "allow-numbers" )
-            {
-                configuration.allowDigit = flag;
-            }
-            else if ( argument == "allow-special" )
-            {
-                configuration.allowSpecial = flag;
-            }
-            else if ( argument == "allow-similar" )
-            {
-                configuration.allowSimilar = flag;
-            }
-            else if ( argument == "allow-duplicate" )
-            {
-                configuration.allowDuplicate = flag;
-            }
-            else if ( argument.substr( 0, 7 ) == "length:" )
-            {
-                configuration.length = atoi( argument.substr( 7 ).c_str() );
-            }
-            else if ( argument.substr( 0, 6 ) == "count:" )
-            {
-                configuration.count = atoi( argument.substr( 6 ).c_str() );
-            }
-        }
-        else
-        {
-            std::cerr << "Invalid option: " << argument << std::endl;
-
-            // Don't save a syntax error to the standard configuration
-            configuration.saveOnExit = false;
-        }
+        processConfigurationItem( argument, &configuration );
     }
 
     // TODO generate and print password(s)
@@ -189,12 +200,28 @@ int main( int argc, char** argv )
         }
         else
         {
+            // Don't save the configuration if this caused an error
+            configuration.saveOnExit = false;
             break;
         }
     }
 
-    // TODO if configured, attempt to save configuration
-    
+    if ( configuration.saveOnExit )
+    {
+        std::ofstream file( "data.txt" );
+
+        file << "-length:" << configuration.length << std::endl;
+        file << "-count:" << configuration.count << std::endl;
+        file << ( configuration.allowUppercase ? "+" : "-" ) << "allow-uppercase" << std::endl;
+        file << ( configuration.allowLowercase ? "+" : "-" ) << "allow-lowercase" << std::endl;
+        file << ( configuration.allowDigit ? "+" : "-" ) << "allow-digit" << std::endl;
+        file << ( configuration.allowSpecial ? "+" : "-" ) << "allow-special" << std::endl;
+        file << ( configuration.allowSimilar ? "+" : "-" ) << "allow-similar" << std::endl;
+        file << ( configuration.allowDuplicate ? "+" : "-" ) << "allow-duplicate" << std::endl;
+
+        file.close();
+    }
+
     // Command line configuration with a default setup
     // 
     // Arguments with value:                Default:            Option:
