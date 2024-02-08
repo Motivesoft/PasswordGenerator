@@ -87,7 +87,6 @@ std::string generatePassword( const Configuration* configuration )
     }
 
     std::string password;
-    srand( static_cast<unsigned int>( time( 0 ) ) );
 
     for ( int i = 0; i < configuration->length; i++ )
     {
@@ -109,6 +108,9 @@ int main( int argc, char** argv )
 {
     std::cout << "Password Generator\n";
 
+    // Seed the random number generator
+    srand( static_cast<unsigned int>( time( 0 ) ) );
+
     Configuration configuration;
 
     // Default values - TODO read from a dot file if present
@@ -119,9 +121,9 @@ int main( int argc, char** argv )
     configuration.allowUppercase = true;
     configuration.allowLowercase = true;
     configuration.allowDigit = true;
-    configuration.allowSpecial = false;
+    configuration.allowSpecial = true;
     configuration.allowSimilar = false;
-    configuration.allowDuplicate = false;
+    configuration.allowDuplicate = true;
 
     // Look for configuration overrides
     for ( int loop = 1; loop < argc; loop++ )
@@ -130,9 +132,42 @@ int main( int argc, char** argv )
 
         if ( argument[ 0 ] == '+' || argument[ 0 ] == '-' )
         {
-            bool on = argument[ 0 ] == '+';
+            bool flag = argument[ 0 ] == '+';
 
             argument = argument.substr( 1 );
+
+            if ( argument == "allow-uppercase" )
+            {
+                configuration.allowUppercase = flag;
+            }
+            else if ( argument == "allow-lowercase" )
+            {
+                configuration.allowLowercase = flag;
+            }
+            else if ( argument == "allow-numbers" )
+            {
+                configuration.allowDigit = flag;
+            }
+            else if ( argument == "allow-special" )
+            {
+                configuration.allowSpecial = flag;
+            }
+            else if ( argument == "allow-similar" )
+            {
+                configuration.allowSimilar = flag;
+            }
+            else if ( argument == "allow-duplicate" )
+            {
+                configuration.allowDuplicate = flag;
+            }
+            else if ( argument.substr( 0, 7 ) == "length:" )
+            {
+                configuration.length = atoi( argument.substr( 7 ).c_str() );
+            }
+            else if ( argument.substr( 0, 6 ) == "count:" )
+            {
+                configuration.count = atoi( argument.substr( 6 ).c_str() );
+            }
         }
         else
         {
@@ -170,9 +205,9 @@ int main( int argc, char** argv )
     // - uppercase characters               on                  +/-allow-uppercase
     // - lowercase characters               on                  +/-allow-lowercase
     // - numeric characters                 on                  +/-allow-numbers
-    // - special characters                 on                  +/-allow-special-characters
-    // - similar characters                 on                  +/-allow-similar-characters
-    // - duplicated characters              on                  +/-allow-duplicated-characters
+    // - special characters                 on                  +/-allow-special
+    // - similar characters                 on                  +/-allow-similar
+    // - duplicated characters              on                  +/-allow-duplicate
     // ? start with a letter                on                  +/-start-with-letter
     // ? avoid sequences (123, abc)         on                  +/-avoid-sequences
     // ? save this configuration            off                 +/-save
