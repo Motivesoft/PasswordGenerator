@@ -14,7 +14,7 @@ typedef struct
     unsigned short count;
     bool allowLowercase;
     bool allowUppercase;
-    bool allowDigit;
+    bool allowDigits;
     bool allowSimilar;
     bool allowSpecial;
     bool allowDuplicate;
@@ -25,7 +25,7 @@ std::string generatePassword( const Configuration* configuration )
 {
     std::string charsetUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     std::string charsetLower = "abcdefghijklmnopqrstuvwxyz";
-    std::string charsetDigit = "0123456789";
+    std::string charsetDigits = "0123456789";
     std::string charsetSpecial = "!@#$%^&*()_+{}|:<>?-=[];',./";
     std::string charsetSimilar = "iloILO01!|/";
 
@@ -39,9 +39,9 @@ std::string generatePassword( const Configuration* configuration )
     {
         charset += charsetLower;
     }
-    if ( configuration->allowDigit )
+    if ( configuration->allowDigits )
     {
-        charset += charsetDigit;
+        charset += charsetDigits;
     }
     if ( configuration->allowSpecial )
     {
@@ -54,7 +54,7 @@ std::string generatePassword( const Configuration* configuration )
         int charsetCount =
             ( configuration->allowUppercase ? 1 : 0 ) +
             ( configuration->allowLowercase ? 1 : 0 ) +
-            ( configuration->allowDigit ? 1 : 0 ) +
+            ( configuration->allowDigits ? 1 : 0 ) +
             ( configuration->allowSpecial ? 1 : 0 );
 
         if ( charsetCount > 1 )
@@ -125,7 +125,7 @@ void processConfigurationItem( std::string configurationItem, Configuration* con
         }
         else if ( argument == "allow-numbers" )
         {
-            configuration->allowDigit = flag;
+            configuration->allowDigits = flag;
         }
         else if ( argument == "allow-special" )
         {
@@ -175,11 +175,11 @@ int main( int argc, char** argv )
     // Default values
     configuration.length = 12;
     configuration.count = 1;
-    configuration.saveOnExit = true;
+    configuration.saveOnExit = false;
 
     configuration.allowUppercase = true;
     configuration.allowLowercase = true;
-    configuration.allowDigit = true;
+    configuration.allowDigits = true;
     configuration.allowSpecial = true;
     configuration.allowSimilar = false;
     configuration.allowDuplicate = true;
@@ -205,24 +205,49 @@ int main( int argc, char** argv )
 
         if ( argument == "-help" )
         {
-            std::cout << std::endl;
-            std::cout << "Password Generator command line options:" << std::endl;
-            std::cout << std::endl;
-            std::cout << "-length:N             Generate passwords of N characters long"  << std::endl;
-            std::cout << "-count:N              Generate N passwords" << std::endl;
-            std::cout << std::endl;
-            std::cout << "+/-allow-uppercase    Whether to include uppercase characters in a password" << std::endl;
-            std::cout << "+/-allow-lowercase    Whether to include lowercase characters in a password" << std::endl;
-            std::cout << "+/-allow-digit        Whether to include numeric digits in a password" << std::endl;
-            std::cout << "+/-allow-special      Whether to include special characters in a password" << std::endl;
-            std::cout << "+/-allow-similar      Whether to include similar characters in a password" << std::endl;
-            std::cout << "+/-allow-duplicate    Whether to allow duplicated characters in a password" << std::endl;
-            std::cout << "+/-save               Whether to save the provided configuration in a .cfg file to be used in subsequent launches" << std::endl;
-
-            return -1;
+            // Ignore for now and process later
+            continue;
         }
 
         processConfigurationItem( argument, &configuration );
+    }
+
+    // Look for command line configuration overrides
+    for ( int loop = 1; loop < argc; loop++ )
+    {
+        std::string argument = argv[ loop ];
+
+        if ( argument == "-help" )
+        {
+            std::cout << std::endl;
+            std::cout << "Password Generator" << std::endl;
+            std::cout << std::endl;
+            std::cout << "Command line options:" << std::endl;
+            std::cout << std::endl;
+            std::cout << "-length:N             Generate passwords of N characters long (" << configuration.length << ")" << std::endl;
+            std::cout << "-count:N              Generate N passwords (" << configuration.count << ")" << std::endl;
+            std::cout << std::endl;
+            std::cout << "Use the options below with either + or - to enable/disable" << std::endl;
+            std::cout << std::endl;
+            std::cout << "+/-allow-uppercase    Include uppercase characters in a password (" << (configuration.allowUppercase ? "enabled" : "disabled") << ")" << std::endl;
+            std::cout << "+/-allow-lowercase    Include lowercase characters in a password (" << (configuration.allowLowercase ? "enabled" : "disabled") << ")" << std::endl;
+            std::cout << "+/-allow-digits       Include numeric digits in a password       (" << (configuration.allowDigits ? "enabled" : "disabled") << ")" << std::endl;
+            std::cout << "+/-allow-special      Include special characters in a password   (" << (configuration.allowSpecial ? "enabled" : "disabled") << ")" << std::endl;
+            std::cout << "+/-allow-similar      Include similar characters in a password   (" << (configuration.allowSimilar ? "enabled" : "disabled") << ")" << std::endl;
+            std::cout << "+/-allow-duplicate    Allow duplicated characters in a password  (" << (configuration.allowDuplicate ? "enabled" : "disabled") << ")" << std::endl;
+            std::cout << std::endl;
+            std::cout << "+/-save               Save the provided configuration as default (" << (configuration.saveOnExit ? "enabled" : "disabled") << ")" << std::endl;
+            std::cout << std::endl;
+            std::cout << "Example:" << std::endl;
+            std::cout << "    PasswordGenerator.exe +allow-uppercase -allow-lowercase -length:16" << std::endl;
+
+            return -1;
+        }
+        else
+        {
+            // Nothing else to do - we've already processed this
+            continue;
+        }
     }
 
     for ( short count = 0; count < configuration.count; count++ )
@@ -236,8 +261,7 @@ int main( int argc, char** argv )
         else
         {
             // Don't save the configuration if this caused an error
-            configuration.saveOnExit = false;
-            break;
+            return -2;
         }
     }
 
@@ -249,7 +273,7 @@ int main( int argc, char** argv )
         file << "-count:" << configuration.count << std::endl;
         file << ( configuration.allowUppercase ? "+" : "-" ) << "allow-uppercase" << std::endl;
         file << ( configuration.allowLowercase ? "+" : "-" ) << "allow-lowercase" << std::endl;
-        file << ( configuration.allowDigit ? "+" : "-" ) << "allow-digit" << std::endl;
+        file << ( configuration.allowDigits ? "+" : "-" ) << "allow-digits" << std::endl;
         file << ( configuration.allowSpecial ? "+" : "-" ) << "allow-special" << std::endl;
         file << ( configuration.allowSimilar ? "+" : "-" ) << "allow-similar" << std::endl;
         file << ( configuration.allowDuplicate ? "+" : "-" ) << "allow-duplicate" << std::endl;
@@ -273,4 +297,6 @@ int main( int argc, char** argv )
     // ? start with a letter                on                  +/-start-with-letter
     // ? avoid sequences (123, abc)         on                  +/-avoid-sequences
     // ? save this configuration            off                 +/-save
+
+    return 0;
 }
