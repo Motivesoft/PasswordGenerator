@@ -1,6 +1,7 @@
 // PasswordGenerator.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
+#include <algorithm>
 #include <ctime>
 #include <cstdlib>
 #include <filesystem>
@@ -166,9 +167,15 @@ int main( int argc, char** argv )
     // Seed the random number generator
     srand( static_cast<unsigned int>( time( 0 ) ) );
 
-    // Configuration filename is executable filename with a different extension
+    // Configuration filename is 
+    // - Windows: the executable filename with a ".cfg" extension     "PasswordGenerator.cfg"
+    // - Other:   the executable filename with a dot and no extension ".PasswordGenerator"
     std::filesystem::path executable( argv[ 0 ] );
+#ifdef _WIN32
     std::string configFile = executable.filename().replace_extension( ".cfg" ).string();
+#else // e.g. Linux or Apple
+    std::string configFile = "." + executable.filename().replace_extension("").string();
+#endif // _WIN32 or _WIN64
 
     Configuration configuration;
 
