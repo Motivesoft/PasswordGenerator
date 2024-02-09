@@ -27,7 +27,7 @@ std::string generatePassword( const Configuration* configuration )
     std::string charsetLower = "abcdefghijklmnopqrstuvwxyz";
     std::string charsetDigit = "0123456789";
     std::string charsetSpecial = "!@#$%^&*()_+{}|:<>?-=[];',./";
-    std::string charsetSimilar = "iloILO01!|";
+    std::string charsetSimilar = "iloILO01!|/";
 
     std::string charset;
 
@@ -172,7 +172,7 @@ int main( int argc, char** argv )
 
     Configuration configuration;
 
-    // Default values - TODO read from a dot file if present
+    // Default values
     configuration.length = 12;
     configuration.count = 1;
     configuration.saveOnExit = true;
@@ -202,10 +202,28 @@ int main( int argc, char** argv )
     {
         std::string argument = argv[ loop ];
 
+        if ( argument == "-help" )
+        {
+            std::cout << std::endl;
+            std::cout << "Password Generator command line options:" << std::endl;
+            std::cout << std::endl;
+            std::cout << "-length:N             Generate passwords of N characters long"  << std::endl;
+            std::cout << "-count:N              Generate N passwords" << std::endl;
+            std::cout << std::endl;
+            std::cout << "+/-allow-uppercase    Whether to include uppercase characters in a password" << std::endl;
+            std::cout << "+/-allow-lowercase    Whether to include lowercase characters in a password" << std::endl;
+            std::cout << "+/-allow-digit        Whether to include numeric digits in a password" << std::endl;
+            std::cout << "+/-allow-special      Whether to include special characters in a password" << std::endl;
+            std::cout << "+/-allow-similar      Whether to include similar characters in a password" << std::endl;
+            std::cout << "+/-allow-duplicate    Whether to allow duplicated characters in a password" << std::endl;
+            std::cout << "+/-save               Whether to save the provided configuration in a .cfg file to be used in subsequent launches" << std::endl;
+
+            return -1;
+        }
+
         processConfigurationItem( argument, &configuration );
     }
 
-    // TODO generate and print password(s)
     for ( short count = 0; count < configuration.count; count++ )
     {
         std::string password = generatePassword( &configuration );
