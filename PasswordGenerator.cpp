@@ -190,9 +190,10 @@ int main( int argc, char** argv )
     if ( file.is_open() )
     {
         std::string item;
-        file >> item;
-
-        processConfigurationItem( item, &configuration );
+        while ( file >> item )
+        {
+            processConfigurationItem( item, &configuration );
+        }
     }
 
     file.close();
