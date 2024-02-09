@@ -344,6 +344,7 @@ int main( int argc, char** argv )
         file << ( configuration.allowSpecial ? "+" : "-" ) << "allow-special" << std::endl;
         file << ( configuration.allowSimilar ? "+" : "-" ) << "allow-similar" << std::endl;
         file << ( configuration.allowDuplicate ? "+" : "-" ) << "allow-duplicate" << std::endl;
+        file << ( configuration.startWithLetter ? "+" : "-" ) << "start-with-letter" << std::endl;
 
         file.close();
     }
