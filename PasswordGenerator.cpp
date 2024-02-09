@@ -3,6 +3,7 @@
 
 #include <ctime>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -162,17 +163,19 @@ void processConfigurationItem( std::string configurationItem, Configuration* con
 
 int main( int argc, char** argv )
 {
-    std::cout << "Password Generator\n";
-
     // Seed the random number generator
     srand( static_cast<unsigned int>( time( 0 ) ) );
+
+    // Configuration filename is executable filename with a different extension
+    std::filesystem::path executable( argv[ 0 ] );
+    std::string configFile = executable.filename().replace_extension( ".cfg" ).string();
 
     Configuration configuration;
 
     // Default values - TODO read from a dot file if present
     configuration.length = 12;
     configuration.count = 1;
-    configuration.saveOnExit = false;
+    configuration.saveOnExit = true;
 
     configuration.allowUppercase = true;
     configuration.allowLowercase = true;
@@ -181,7 +184,20 @@ int main( int argc, char** argv )
     configuration.allowSimilar = false;
     configuration.allowDuplicate = true;
 
-    // Look for configuration overrides
+    // Load configuration values from file, if present
+    std::ifstream file( configFile );
+
+    if ( file.is_open() )
+    {
+        std::string item;
+        file >> item;
+
+        processConfigurationItem( item, &configuration );
+    }
+
+    file.close();
+
+    // Look for command line configuration overrides
     for ( int loop = 1; loop < argc; loop++ )
     {
         std::string argument = argv[ loop ];
@@ -208,7 +224,7 @@ int main( int argc, char** argv )
 
     if ( configuration.saveOnExit )
     {
-        std::ofstream file( "data.txt" );
+        std::ofstream file( configFile );
 
         file << "-length:" << configuration.length << std::endl;
         file << "-count:" << configuration.count << std::endl;
