@@ -19,6 +19,7 @@ typedef struct
     bool allowSimilar;
     bool allowSpecial;
     bool allowDuplicate;
+    bool startWithLetter;
     bool saveOnExit;
 } Configuration;
 
@@ -91,9 +92,29 @@ std::string generatePassword( const Configuration* configuration )
 
     std::string password;
 
+    // If we must start with a letter, limit the search space for the first character
+    size_t charsetLength = charset.length();
+    if ( configuration->startWithLetter )
+    {
+        if ( configuration->allowLowercase )
+        {
+            charsetLength = charset.find_first_of( 'z', 0 );
+        }
+        else if ( configuration->allowUppercase )
+        {
+            charsetLength = charset.find_first_of( 'Z', 0 );
+        }
+        else
+        {
+            std::cerr << "Cannot start password with a letter" << std::endl;
+
+            return "";
+        }
+    }
+
     for ( int i = 0; i < configuration->length; i++ )
     {
-        char c = charset[ rand() % ( charset.length() - 1 ) ];
+        char c = charset[ rand() % ( charsetLength - 1 ) ];
 
         if ( !configuration->allowDuplicate )
         {
@@ -102,12 +123,15 @@ std::string generatePassword( const Configuration* configuration )
         }
 
         password += c;
+
+        // Now we can use all of the remaining chartset for subsequent characters
+        charsetLength = charset.length();
     }
 
     return password;
 }
 
-void processConfigurationItem( std::string configurationItem, Configuration* configuration )
+bool processConfigurationItem( std::string configurationItem, Configuration* configuration )
 {
     // Assume everything starts with a + or -
     if ( configurationItem[ 0 ] == '+' || configurationItem[ 0 ] == '-' )
@@ -140,6 +164,10 @@ void processConfigurationItem( std::string configurationItem, Configuration* con
         {
             configuration->allowDuplicate = flag;
         }
+        else if ( argument == "start-with-letter" )
+        {
+            configuration->startWithLetter = flag;
+        }
         else if ( argument.substr( 0, 6 ) == "save" )
         {
             configuration->saveOnExit = flag;
@@ -152,14 +180,25 @@ void processConfigurationItem( std::string configurationItem, Configuration* con
         {
             configuration->count = atoi( argument.substr( 6 ).c_str() );
         }
+        else
+        {
+            std::cerr << "Invalid option: " << configurationItem << std::endl;
+
+            // Don't save if there is a problem with the configuration
+            configuration->saveOnExit = false;
+            return false;
+        }
     }
     else
     {
-        std::cerr << "Invalid option: " << configurationItem << std::endl;
+        std::cerr << "Invalid command line argument: " << configurationItem << std::endl;
 
         // Don't save if there is a problem with the configuration
         configuration->saveOnExit = false;
+        return false;
     }
+
+    return true;
 }
 
 int main( int argc, char** argv )
@@ -173,8 +212,10 @@ int main( int argc, char** argv )
     std::filesystem::path executable( argv[ 0 ] );
 #ifdef _WIN32
     std::string configFile = executable.filename().replace_extension( ".cfg" ).string();
+    std::string helpOption = "-help";
 #else // e.g. Linux or Apple
     std::string configFile = "." + executable.filename().replace_extension("").string();
+    std::string helpOption = "--help";
 #endif // _WIN32 or _WIN64
 
     Configuration configuration;
@@ -190,6 +231,7 @@ int main( int argc, char** argv )
     configuration.allowSpecial = true;
     configuration.allowSimilar = false;
     configuration.allowDuplicate = true;
+    configuration.startWithLetter = false;
 
     // Load configuration values from file, if present
     std::ifstream file( configFile );
@@ -210,13 +252,16 @@ int main( int argc, char** argv )
     {
         std::string argument = argv[ loop ];
 
-        if ( argument == "-help" || argument == "--help" )
+        if ( argument == helpOption )
         {
             // Ignore for now and process later
             continue;
         }
 
-        processConfigurationItem( argument, &configuration );
+        if ( !processConfigurationItem( argument, &configuration ) )
+        {
+            return -5;
+        }
     }
 
     // Look for command line configuration overrides
@@ -224,7 +269,7 @@ int main( int argc, char** argv )
     {
         std::string argument = argv[ loop ];
 
-        if ( argument == "-help" || argument == "--help" )
+        if ( argument == helpOption )
         {
             std::cout << std::endl;
             std::cout << "Password Generator" << std::endl;
@@ -242,6 +287,7 @@ int main( int argc, char** argv )
             std::cout << "+/-allow-special      Include special characters in a password   (" << (configuration.allowSpecial ? "enabled" : "disabled") << ")" << std::endl;
             std::cout << "+/-allow-similar      Include similar characters in a password   (" << (configuration.allowSimilar ? "enabled" : "disabled") << ")" << std::endl;
             std::cout << "+/-allow-duplicate    Allow duplicated characters in a password  (" << (configuration.allowDuplicate ? "enabled" : "disabled") << ")" << std::endl;
+            std::cout << "+/-start-with-letter  Ensure the first character is a letter     (" << ( configuration.allowDuplicate ? "enabled" : "disabled" ) << ")" << std::endl;
             std::cout << std::endl;
             std::cout << "+/-save               Save the provided configuration as default (" << (configuration.saveOnExit ? "enabled" : "disabled") << ")" << std::endl;
             std::cout << std::endl;
@@ -255,6 +301,20 @@ int main( int argc, char** argv )
             // Nothing else to do - we've already processed this
             continue;
         }
+    }
+
+    if ( configuration.count == 0 )
+    {
+        std::cerr << "Nothing to do" << std::endl;
+
+        return -3;
+    }
+
+    if ( configuration.length == 0 )
+    {
+        std::cerr << "Password cannot be zero length" << std::endl;
+
+        return -4;
     }
 
     for ( short count = 0; count < configuration.count; count++ )
@@ -301,9 +361,9 @@ int main( int argc, char** argv )
     // - special characters                 on                  +/-allow-special
     // - similar characters                 on                  +/-allow-similar
     // - duplicated characters              on                  +/-allow-duplicate
+    // - save this configuration            off                 +/-save
     // ? start with a letter                on                  +/-start-with-letter
     // ? avoid sequences (123, abc)         on                  +/-avoid-sequences
-    // ? save this configuration            off                 +/-save
 
     return 0;
 }
