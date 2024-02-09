@@ -210,7 +210,7 @@ int main( int argc, char** argv )
     {
         std::string argument = argv[ loop ];
 
-        if ( argument == "-help" )
+        if ( argument == "-help" || argument == "--help" )
         {
             // Ignore for now and process later
             continue;
@@ -224,7 +224,7 @@ int main( int argc, char** argv )
     {
         std::string argument = argv[ loop ];
 
-        if ( argument == "-help" )
+        if ( argument == "-help" || argument == "--help" )
         {
             std::cout << std::endl;
             std::cout << "Password Generator" << std::endl;
