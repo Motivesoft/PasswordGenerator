@@ -148,7 +148,7 @@ bool processConfigurationItem( std::string configurationItem, Configuration* con
         {
             configuration->allowLowercase = flag;
         }
-        else if ( argument == "allow-numbers" )
+        else if ( argument == "allow-digits" )
         {
             configuration->allowDigits = flag;
         }
@@ -358,7 +358,7 @@ int main( int argc, char** argv )
     // Flags (on/off):                      Default:            Option:
     // - uppercase characters               on                  +/-allow-uppercase
     // - lowercase characters               on                  +/-allow-lowercase
-    // - numeric characters                 on                  +/-allow-numbers
+    // - numeric characters                 on                  +/-allow-digits
     // - special characters                 on                  +/-allow-special
     // - similar characters                 on                  +/-allow-similar
     // - duplicated characters              on                  +/-allow-duplicate
