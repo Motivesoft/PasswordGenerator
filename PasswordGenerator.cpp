@@ -59,6 +59,8 @@ std::string generatePassword( const Configuration* configuration )
 
     std::string password;
 
+    short specialCount = 0;
+
     if ( !configuration->allowSimilar )
     {
         // Remove similar characters
@@ -89,9 +91,16 @@ std::string generatePassword( const Configuration* configuration )
     }
     if ( configuration->allowSpecial )
     {
-        charset += charsetSpecial;
+        // If we are only allowed one special character, don't add others to the main charset
+        if ( configuration->maxSpecial != 1 )
+        {
+            charset += charsetSpecial;
+        }
 
         password += charsetSpecial[ rand() % ( charsetSpecial.length() - 1 ) ];
+        
+        // Allow the number of special characters to be limited
+        specialCount++;
     }
 
     // Impossible
@@ -141,6 +150,7 @@ std::string generatePassword( const Configuration* configuration )
         }
     }
 
+    // Fill out the rest of the password
     while ( password.length() < configuration->length )
     {
         char c = charset[ rand() % ( charset.length() - 1 ) ];
@@ -149,6 +159,23 @@ std::string generatePassword( const Configuration* configuration )
         {
             // Each character can only be used once in the password - erase them from the charset as they get used
             charset.erase( std::find( charset.begin(), charset.end(), c ) );
+        }
+
+        // Keep track of special characters?
+        if ( configuration->maxSpecial > 0 )
+        {
+            if ( std::find( charsetSpecial.begin(), charsetSpecial.end(), c ) != charsetSpecial.end() )
+            {
+                specialCount++;
+                if ( specialCount >= configuration->maxSpecial )
+                {
+                    // No more after this one - erase all of the specials from the main charset
+                    for ( std::string::const_iterator it = charsetSpecial.cbegin(); it != charsetSpecial.cend(); it++ )
+                    {
+                        charset.erase( std::find( charset.begin(), charset.end(), *it ) );
+                    }
+                }
+            }
         }
 
         password += c;
@@ -227,9 +254,9 @@ bool processConfigurationItem( std::string configurationItem, Configuration* con
         {
             configuration->count = atoi( argument.substr( 6 ).c_str() );
         }
-        else if ( argument.substr( 0, 6 ) == "max-special:" )
+        else if ( argument.substr( 0, 12 ) == "max-special:" )
         {
-            configuration->maxSpecial = atoi( argument.substr( 6 ).c_str() );
+            configuration->maxSpecial = atoi( argument.substr( 12 ).c_str() );
         }
         else
         {
