@@ -111,7 +111,6 @@ std::string generatePassword( const Configuration* configuration )
     }
 
     // If we must start with a letter, then use what we've already added to the string
-    size_t charsetLength = charset.length();
     if ( configuration->startWithLetter )
     {
         if ( !configuration->allowLowercase && !configuration->allowUppercase )
@@ -135,7 +134,7 @@ std::string generatePassword( const Configuration* configuration )
 
     if ( !configuration->allowDuplicate )
     {
-        // Each character can only be used once in the password - erase them from the charset as they get used
+        // Each character can only be used once in the password - erase any already selected from the charset
         for ( std::string::const_iterator it = password.cbegin(); it != password.cend(); it++ )
         {
             charset.erase( std::find( charset.begin(), charset.end(), *it ) );
