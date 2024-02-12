@@ -7,12 +7,14 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <random>
 #include <string>
 
 typedef struct
 {
     unsigned short length;
     unsigned short count;
+    unsigned short maxSpecial;
     bool allowLowercase;
     bool allowUppercase;
     bool allowDigits;
@@ -22,6 +24,24 @@ typedef struct
     bool startWithLetter;
     bool saveOnExit;
 } Configuration;
+
+std::string filter( std::string charset, std::string filter )
+{
+    std::string filtered = charset;
+
+    // Remove undesirable characters from 'filtered'
+    for ( std::string::iterator it = filter.begin(); it != filter.end(); it++ )
+    {
+        std::string::iterator found = std::find( filtered.begin(), filtered.end(), *it );
+
+        if ( found != filtered.end() )
+        {
+            filtered.erase( found );
+        }
+    }
+
+    return filtered;
+}
 
 std::string generatePassword( const Configuration* configuration )
 {
@@ -33,45 +53,45 @@ std::string generatePassword( const Configuration* configuration )
 
     std::string charset;
 
+    // Randomizer function
+    std::random_device rd;
+    std::mt19937 g( rd() );
+
+    std::string password;
+
+    if ( !configuration->allowSimilar )
+    {
+        // Remove similar characters
+        charsetUpper = filter( charsetUpper, charsetSimilar );
+        charsetLower = filter( charsetLower, charsetSimilar );
+        charsetDigits = filter( charsetDigits, charsetSimilar );
+        charsetSpecial = filter( charsetSpecial, charsetSimilar );
+    }
+
+    // Make sure it has one of each requested type
     if ( configuration->allowUppercase )
     {
         charset += charsetUpper;
+
+        password += charsetUpper[ rand() % ( charsetUpper.length() - 1 )];
     }
     if ( configuration->allowLowercase )
     {
         charset += charsetLower;
+
+        password += charsetLower[ rand() % ( charsetLower.length() - 1 ) ];
     }
     if ( configuration->allowDigits )
     {
         charset += charsetDigits;
+
+        password += charsetDigits[ rand() % ( charsetDigits.length() - 1 ) ];
     }
     if ( configuration->allowSpecial )
     {
         charset += charsetSpecial;
-    }
 
-    if ( !configuration->allowSimilar )
-    {
-        // Filter similar characters unless we are only using one charset
-        int charsetCount =
-            ( configuration->allowUppercase ? 1 : 0 ) +
-            ( configuration->allowLowercase ? 1 : 0 ) +
-            ( configuration->allowDigits ? 1 : 0 ) +
-            ( configuration->allowSpecial ? 1 : 0 );
-
-        if ( charsetCount > 1 )
-        {
-            // Remove similar characters
-            for ( std::string::iterator it = charsetSimilar.begin(); it != charsetSimilar.end(); it++ )
-            {
-                std::string::iterator found = std::find( charset.begin(), charset.end(), *it );
-
-                if ( found != charset.end() )
-                {
-                    charset.erase( found );
-                }
-            }
-        }
+        password += charsetSpecial[ rand() % ( charsetSpecial.length() - 1 ) ];
     }
 
     // Impossible
@@ -90,31 +110,41 @@ std::string generatePassword( const Configuration* configuration )
         return "";
     }
 
-    std::string password;
-
-    // If we must start with a letter, limit the search space for the first character
+    // If we must start with a letter, then use what we've already added to the string
     size_t charsetLength = charset.length();
     if ( configuration->startWithLetter )
     {
-        if ( configuration->allowLowercase )
-        {
-            charsetLength = charset.find_first_of( 'z', 0 );
-        }
-        else if ( configuration->allowUppercase )
-        {
-            charsetLength = charset.find_first_of( 'Z', 0 );
-        }
-        else
+        if ( !configuration->allowLowercase && !configuration->allowUppercase )
         {
             std::cerr << "Cannot start password with a letter" << std::endl;
 
             return "";
         }
+        else if ( configuration->allowLowercase && configuration->allowUppercase )
+        {
+            // First two characters should be an upper and a lower by this point, so shuffle them
+            std::string::iterator it1 = password.begin();
+            std::string::iterator it2 = password.begin();
+            it2++;
+            it2++;
+
+            std::shuffle( it1, it2, g );
+        }
+        // else only of of uppercase or lowercase allowed, so our prototype password already starts correctly
     }
 
-    for ( int i = 0; i < configuration->length; i++ )
+    if ( !configuration->allowDuplicate )
     {
-        char c = charset[ rand() % ( charsetLength - 1 ) ];
+        // Each character can only be used once in the password - erase them from the charset as they get used
+        for ( std::string::const_iterator it = password.cbegin(); it != password.cend(); it++ )
+        {
+            charset.erase( std::find( charset.begin(), charset.end(), *it ) );
+        }
+    }
+
+    while ( password.length() < configuration->length )
+    {
+        char c = charset[ rand() % ( charset.length() - 1 ) ];
 
         if ( !configuration->allowDuplicate )
         {
@@ -123,9 +153,27 @@ std::string generatePassword( const Configuration* configuration )
         }
 
         password += c;
+    }
 
-        // Now we can use all of the remaining chartset for subsequent characters
-        charsetLength = charset.length();
+    // A final shuffle of the password
+    if ( configuration->startWithLetter )
+    {
+        // Leave the first character unmoved as we have already made sure it is a letter
+        std::string::iterator it1 = password.begin();
+        std::string::iterator it2 = password.end();
+        it1++;
+
+        std::shuffle( it1, it2, g );
+    }
+    else // Shuffle the whole thing
+    {
+        std::shuffle( password.begin(), password.end(), g );
+    }
+
+    // Clip to length if required (unexpected unless length is a very small number)
+    if ( password.length() > configuration->length )
+    {
+        password = password.substr( 0, configuration->length );
     }
 
     return password;
@@ -180,6 +228,10 @@ bool processConfigurationItem( std::string configurationItem, Configuration* con
         {
             configuration->count = atoi( argument.substr( 6 ).c_str() );
         }
+        else if ( argument.substr( 0, 6 ) == "max-special:" )
+        {
+            configuration->maxSpecial = atoi( argument.substr( 6 ).c_str() );
+        }
         else
         {
             std::cerr << "Invalid option: " << configurationItem << std::endl;
@@ -223,6 +275,7 @@ int main( int argc, char** argv )
     // Default values
     configuration.length = 12;
     configuration.count = 1;
+    configuration.maxSpecial = 0;
     configuration.saveOnExit = false;
 
     configuration.allowUppercase = true;
@@ -278,6 +331,14 @@ int main( int argc, char** argv )
             std::cout << std::endl;
             std::cout << "-length:N             Generate passwords of N characters long (" << configuration.length << ")" << std::endl;
             std::cout << "-count:N              Generate N passwords (" << configuration.count << ")" << std::endl;
+            if ( configuration.maxSpecial == 0 )
+            {
+                std::cout << "-max-special:N        Include at most N special characters (unlimited)" << std::endl;
+            }
+            else
+            {
+                std::cout << "-max-special:N        Include at most N special characters (" << configuration.maxSpecial << ")" << std::endl;
+            }
             std::cout << std::endl;
             std::cout << "Use the options below with either + or - to enable/disable" << std::endl;
             std::cout << std::endl;
@@ -338,6 +399,7 @@ int main( int argc, char** argv )
 
         file << "-length:" << configuration.length << std::endl;
         file << "-count:" << configuration.count << std::endl;
+        file << "-max-special:" << configuration.maxSpecial << std::endl;
         file << ( configuration.allowUppercase ? "+" : "-" ) << "allow-uppercase" << std::endl;
         file << ( configuration.allowLowercase ? "+" : "-" ) << "allow-lowercase" << std::endl;
         file << ( configuration.allowDigits ? "+" : "-" ) << "allow-digits" << std::endl;
