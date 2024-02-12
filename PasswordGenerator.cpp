@@ -10,6 +10,8 @@
 #include <random>
 #include <string>
 
+#define VERSION "1.0.0.4"
+
 typedef struct
 {
     unsigned short length;
@@ -291,9 +293,11 @@ int main( int argc, char** argv )
 #ifdef _WIN32
     std::string configFile = executable.filename().replace_extension( ".cfg" ).string();
     std::string helpOption = "-help";
+    std::string versionOption = "-version";
 #else // e.g. Linux or Apple
     std::string configFile = "." + executable.filename().replace_extension("").string();
     std::string helpOption = "--help";
+    std::string versionOption = "--version";
 #endif // _WIN32 or _WIN64
 
     Configuration configuration;
@@ -331,7 +335,7 @@ int main( int argc, char** argv )
     {
         std::string argument = argv[ loop ];
 
-        if ( argument == helpOption )
+        if ( argument == helpOption || argument == versionOption )
         {
             // Ignore for now and process later
             continue;
@@ -343,15 +347,22 @@ int main( int argc, char** argv )
         }
     }
 
-    // Look for command line configuration overrides
+    // Look for command line questions
+    bool keepRunning = true;
     for ( int loop = 1; loop < argc; loop++ )
     {
         std::string argument = argv[ loop ];
 
-        if ( argument == helpOption )
+        if ( argument == versionOption )
         {
-            std::cout << std::endl;
-            std::cout << "Password Generator" << std::endl;
+            std::cout << "Password Generator " << VERSION << std::endl;
+
+            keepRunning = false;
+            break;
+        }
+        else if ( argument == helpOption )
+        {
+            std::cout << "Password Generator " << VERSION << std::endl;
             std::cout << std::endl;
             std::cout << "Command line options:" << std::endl;
             std::cout << std::endl;
@@ -381,13 +392,20 @@ int main( int argc, char** argv )
             std::cout << "Example:" << std::endl;
             std::cout << "    PasswordGenerator.exe +allow-uppercase -allow-lowercase -length:16" << std::endl;
 
-            return -1;
+            keepRunning = false;
+            break;
         }
         else
         {
             // Nothing else to do - we've already processed this
             continue;
         }
+    }
+
+    // If we showed help or version, don't continue
+    if ( !keepRunning )
+    {
+        return - 1;
     }
 
     if ( configuration.count == 0 )
