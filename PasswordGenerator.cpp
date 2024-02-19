@@ -106,6 +106,7 @@ bool writeToClipboard( const char* text )
     if ( display == nullptr )
     {
         // Handle error
+        std::cerr << "Failed to connect to the clipboard" << std::endl;
         return false;
     }
 
