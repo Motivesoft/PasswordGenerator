@@ -16,6 +16,7 @@
 #else
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <cstring>
 #endif
 
 #define VERSION "1.0.0.5"
