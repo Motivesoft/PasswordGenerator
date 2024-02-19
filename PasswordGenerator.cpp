@@ -2,15 +2,23 @@
 //
 
 #include <algorithm>
-#include <ctime>
 #include <cstdlib>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <random>
+#include <sstream>
 #include <string>
 
-#define VERSION "1.0.0.4"
+#if _WIN32
+#include <Windows.h>
+#else
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#endif
+
+#define VERSION "1.0.0.5"
 
 typedef struct
 {
@@ -25,6 +33,8 @@ typedef struct
     bool allowDuplicate;
     bool startWithLetter;
     bool saveOnExit;
+    bool copyToClipboard;
+    bool echoToConsole;
 } Configuration;
 
 std::string filter( std::string charset, std::string filter )
@@ -43,6 +53,72 @@ std::string filter( std::string charset, std::string filter )
     }
 
     return filtered;
+}
+
+bool writeToClipboard( const char* text )
+{
+#if _WIN32
+    // Open the clipboard
+    if ( !OpenClipboard( nullptr ) )
+    {
+        std::cerr << "Failed to open the clipboard" << std::endl;
+        return false;
+    }
+
+    // Clear the clipboard
+    if ( !EmptyClipboard() )
+    {
+        std::cerr << "Failed to empty the clipboard" << std::endl;
+        CloseClipboard();
+        return false;
+    }
+
+    // Allocate global memory for the text
+    HGLOBAL hMem = GlobalAlloc( GMEM_MOVEABLE, strlen( text ) + 1 );
+    if ( hMem == nullptr )
+    {
+        std::cerr << "Failed to allocate memory for the text" << std::endl;
+        CloseClipboard();
+        return false;
+    }
+
+    // Lock and copy the text to the global memory
+    char* memData = static_cast<char*>( GlobalLock( hMem ) );
+    if ( memData != nullptr )
+    {
+        strcpy_s( memData, strlen( text ) + 1, text);
+        GlobalUnlock( hMem );
+
+        // Set the data to the clipboard
+        if ( SetClipboardData( CF_TEXT, hMem ) == nullptr )
+        {
+            std::cerr << "Failed to set the data to the clipboard" << std::endl;
+            CloseClipboard();
+            return false;
+        }
+    }
+
+    // Close the clipboard
+    CloseClipboard();
+#else
+    Display* display = XOpenDisplay( nullptr );
+    if ( display == nullptr )
+    {
+        // Handle error
+        return false;
+    }
+
+    Atom clipboard = XInternAtom( display, "CLIPBOARD", False );
+    XSetSelectionOwner( display, clipboard, None, CurrentTime );
+
+    Atom utf8String = XInternAtom( display, "UTF8_STRING", False );
+    XChangeProperty( display, DefaultRootWindow( display ), clipboard, utf8String, 8, PropModeReplace,
+                     reinterpret_cast<const unsigned char*>( text ), std::strlen( text ) );
+
+    XCloseDisplay( display );
+#endif
+
+    return true;
 }
 
 std::string generatePassword( const Configuration* configuration )
@@ -248,6 +324,14 @@ bool processConfigurationItem( std::string configurationItem, Configuration* con
         {
             configuration->saveOnExit = flag;
         }
+        else if ( argument == "copy" )
+        {
+            configuration->copyToClipboard = flag;
+        }
+        else if ( argument == "echo" )
+        {
+            configuration->echoToConsole = flag;
+        }
         else if ( argument.substr( 0, 7 ) == "length:" )
         {
             configuration->length = atoi( argument.substr( 7 ).c_str() );
@@ -315,6 +399,8 @@ int main( int argc, char** argv )
     configuration.allowSimilar = false;
     configuration.allowDuplicate = true;
     configuration.startWithLetter = false;
+    configuration.copyToClipboard = true;
+    configuration.echoToConsole = true;
 
     // Load configuration values from file, if present
     std::ifstream file( configFile );
@@ -388,6 +474,8 @@ int main( int argc, char** argv )
             std::cout << "+/-start-with-letter  Ensure the first character is a letter     (" << ( configuration.allowDuplicate ? "enabled" : "disabled" ) << ")" << std::endl;
             std::cout << std::endl;
             std::cout << "+/-save               Save the provided configuration as default (" << (configuration.saveOnExit ? "enabled" : "disabled") << ")" << std::endl;
+            std::cout << "+/-copy               Write password(s) to the clipboard (" << ( configuration.saveOnExit ? "enabled" : "disabled" ) << ")" << std::endl;
+            std::cout << "+/-echo               Write password(s) to the console (" << ( configuration.saveOnExit ? "enabled" : "disabled" ) << ")" << std::endl;
             std::cout << std::endl;
             std::cout << "Example:" << std::endl;
             std::cout << "    PasswordGenerator.exe +allow-uppercase -allow-lowercase -length:16" << std::endl;
@@ -422,19 +510,33 @@ int main( int argc, char** argv )
         return -4;
     }
 
+    std::stringstream clipboardOutput;
     for ( short count = 0; count < configuration.count; count++ )
     {
         std::string password = generatePassword( &configuration );
 
         if ( password.length() > 0 )
         {
-            std::cout << generatePassword( &configuration ) << std::endl;
+            if ( configuration.echoToConsole )
+            {
+                std::cout << password << std::endl;
+            }
+
+            if ( configuration.copyToClipboard )
+            {
+                clipboardOutput << password << std::endl;
+            }
         }
         else
         {
             // Don't save the configuration if this caused an error
             return -2;
         }
+    }
+
+    if ( configuration.copyToClipboard )
+    {
+        writeToClipboard( clipboardOutput.str().c_str() );
     }
 
     if ( configuration.saveOnExit )
@@ -451,6 +553,8 @@ int main( int argc, char** argv )
         file << ( configuration.allowSimilar ? "+" : "-" ) << "allow-similar" << std::endl;
         file << ( configuration.allowDuplicate ? "+" : "-" ) << "allow-duplicate" << std::endl;
         file << ( configuration.startWithLetter ? "+" : "-" ) << "start-with-letter" << std::endl;
+        file << ( configuration.copyToClipboard ? "+" : "-" ) << "copy" << std::endl;
+        file << ( configuration.echoToConsole ? "+" : "-" ) << "echo" << std::endl;
 
         file.close();
     }
