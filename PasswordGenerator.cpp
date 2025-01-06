@@ -10,7 +10,7 @@
 #include <random>
 #include <string>
 
-#define VERSION "1.0.0.4"
+#define VERSION "1.0.0.5"
 
 typedef struct
 {
@@ -281,24 +281,32 @@ bool processConfigurationItem( std::string configurationItem, Configuration* con
     return true;
 }
 
+// Read the settings from a file into the configuration.
+// If the file does not exit, that's OK.
+// For the benefit of the caller, return true if a configuration file was found
+bool processConfigurationFile( std::string filename, Configuration* configuration ) 
+{
+    std::ifstream file( filename );
+
+    if ( file.is_open() )
+    {
+        std::string item;
+        while ( file >> item )
+        {
+            processConfigurationItem( item, configuration );
+        }
+
+        file.close();
+        return true;
+    }
+
+    return false;
+}
+
 int main( int argc, char** argv )
 {
     // Seed the random number generator
     srand( static_cast<unsigned int>( time( 0 ) ) );
-
-    // Configuration filename is 
-    // - Windows: the executable filename with a ".cfg" extension     "PasswordGenerator.cfg"
-    // - Other:   the executable filename with a dot and no extension ".PasswordGenerator"
-    std::filesystem::path executable( argv[ 0 ] );
-#ifdef _WIN32
-    std::string configFile = executable.filename().replace_extension( ".cfg" ).string();
-    std::string helpOption = "-help";
-    std::string versionOption = "-version";
-#else // e.g. Linux or Apple
-    std::string configFile = "." + executable.filename().replace_extension("").string();
-    std::string helpOption = "--help";
-    std::string versionOption = "--version";
-#endif // _WIN32 or _WIN64
 
     Configuration configuration;
 
@@ -315,6 +323,33 @@ int main( int argc, char** argv )
     configuration.allowSimilar = false;
     configuration.allowDuplicate = true;
     configuration.startWithLetter = false;
+
+    // Configuration filename is 
+    // - Windows: the executable filename with a ".cfg" extension     "PasswordGenerator.cfg"
+    // - Other:   the executable filename with a dot and no extension ".PasswordGenerator"
+    std::filesystem::path executable( argv[ 0 ] );
+#ifdef _WIN32
+    std::string helpOption = "-help";
+    std::string versionOption = "-version";
+
+    // Look for a config file in the current directory
+    std::string configFile = executable.filename().replace_extension( ".cfg" ).string();
+    processConfigurationFile( configFile, &configuration );
+#else // e.g. Linux or Apple
+    std::string helpOption = "--help";
+    std::string versionOption = "--version";
+
+    // Look for a config file in the current directory. If none found, try the user's home directory
+    std::string configFile = "." + executable.filename().replace_extension("").string();
+    if ( !processConfigurationFile( configFile, &configuration ) )
+    {
+        const char* homeDir = std::getenv("HOME");
+        if ( homeDir )
+        {
+            processConfigurationFile( std::string( homeDir ) + "/" + configFile, &configuration );
+        } 
+    }
+#endif // _WIN32 or _WIN64
 
     // Load configuration values from file, if present
     std::ifstream file( configFile );

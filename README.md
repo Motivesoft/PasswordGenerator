@@ -19,6 +19,21 @@ Run the utility with ```-help``` (Windows) or ```--help``` (Linux/Mac) for more 
 ### Example
 ```PasswordGenerator -length:16 -allow-uppercase -allow-special +allow_lowercase +allow-digits -count:3```
 
+## Configuration files
+Configuration settings may be stored in a file called:
+```script
+# Windows
+.passwordgenerator.cfg
+
+# Linux
+.passwordgenerator
+```
+
+If the file exists in the current directory, it will be read to extract any configuration settings from it. In Linux, if the file is not present in the
+current directory, it will be looked for in the user's home directory.
+
+The configuration settings must be specified as one per line in the style shown by running the executable with the ```--help``` command line argument (```-help``` on Windows).
+
 ## Compilation
 Use Visual Studio solution and project file in VS2022 or later for Windows.
 
