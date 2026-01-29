@@ -23,10 +23,11 @@ Run the utility with ```-help``` (Windows) or ```--help``` (Linux/Mac) for more 
 Configuration settings may be stored in a file called:
 ```script
 # Windows
-.passwordgenerator.cfg
+passwordgenerator.cfg
 
-# Linux
-.passwordgenerator
+# Linux - conf file in current directory or '$HOME/.config'
+passwordgenerator.conf
+~/.config/passwordgenerator.conf
 ```
 
 If the file exists in the current directory, it will be read to extract any configuration settings from it. In Linux, if the file is not present in the

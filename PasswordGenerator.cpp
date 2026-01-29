@@ -10,7 +10,7 @@
 #include <random>
 #include <string>
 
-#define VERSION "1.0.0.5"
+#define VERSION "1.0.1.0"
 
 typedef struct
 {
@@ -339,14 +339,14 @@ int main( int argc, char** argv )
     std::string helpOption = "--help";
     std::string versionOption = "--version";
 
-    // Look for a config file in the current directory. If none found, try the user's home directory
-    std::string configFile = "." + executable.filename().replace_extension("").string();
+    // Look for a config file in the current directory. If none found, try the user's '.config' directory
+    std::string configFile = executable.filename().replace_extension(".conf").string();
     if ( !processConfigurationFile( configFile, &configuration ) )
     {
         const char* homeDir = std::getenv("HOME");
         if ( homeDir )
         {
-            processConfigurationFile( std::string( homeDir ) + "/" + configFile, &configuration );
+            processConfigurationFile( std::string( homeDir ) + "/.config/" + configFile, &configuration );
         } 
     }
 #endif // _WIN32 or _WIN64
