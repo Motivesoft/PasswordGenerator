@@ -399,3 +399,7 @@ FodyWeavers.xsd
 
 # File generated during testing
 PasswordGenerator.cfg
+
+# Compiled executables
+PasswordGenerator.exe
+passwordgenerator

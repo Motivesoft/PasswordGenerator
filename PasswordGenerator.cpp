@@ -10,7 +10,7 @@
 #include <random>
 #include <string>
 
-#define VERSION "1.0.1.0"
+#define VERSION "1.0.2.0"
 
 typedef struct
 {
@@ -425,7 +425,7 @@ int main( int argc, char** argv )
             std::cout << "+/-save               Save the provided configuration as default (" << (configuration.saveOnExit ? "enabled" : "disabled") << ")" << std::endl;
             std::cout << std::endl;
             std::cout << "Example:" << std::endl;
-            std::cout << "    PasswordGenerator.exe +allow-uppercase -allow-lowercase -length:16" << std::endl;
+            std::cout << "    " << argv[0] << " +allow-uppercase -allow-lowercase -length:16" << std::endl;
 
             keepRunning = false;
             break;
